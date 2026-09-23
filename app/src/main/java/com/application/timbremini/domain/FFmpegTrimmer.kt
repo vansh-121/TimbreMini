@@ -49,30 +49,44 @@ class FFmpegTrimmer(private val context: Context) {
 
         // Format timestamps in seconds with millisecond precision (e.g. 12.345)
         val startSec = String.format(Locale.US, "%.3f", startMs / 1000.0)
-        val endSec = String.format(Locale.US, "%.3f", endMs / 1000.0)
+        val targetDurationSec = String.format(Locale.US, "%.3f", targetDurationMs / 1000.0)
 
         // Strategy 1: Fast Lossless Stream Copy (-c copy)
-        // -avoid_negative_ts 1 ensures monotonic timestamps starting at zero
-        val copyCommand = "-y -ss $startSec -to $endSec -i \"${inputFile.absolutePath}\" -c copy -avoid_negative_ts 1 \"${outputFile.absolutePath}\""
+        // Using -ss before -i with -t guarantees precise seek and duration
+        // -avoid_negative_ts make_zero ensures monotonic timestamps starting at zero
+        val copyCommand = "-y -ss $startSec -i \"${inputFile.absolutePath}\" -t $targetDurationSec -c copy -avoid_negative_ts make_zero \"${outputFile.absolutePath}\""
         Log.d(TAG, "Executing FFmpeg Stream Copy command: $copyCommand")
 
         val copyResult = executeSession(copyCommand, targetDurationMs, onProgress)
 
         if (copyResult && outputFile.exists() && outputFile.length() > 0) {
-            // Stream copy can only cut on keyframes, so the start snaps to the nearest
-            // preceding keyframe. With a large GOP this inflates the clip well beyond the
-            // requested range (e.g. a 1s selection exporting as ~9s). Verify the real
-            // output duration and only accept the copy when it matches the request; otherwise
-            // fall through to a frame-accurate re-encode.
+            // For video: Stream copy can only cut on keyframes, so the start snaps to the nearest
+            // preceding keyframe. If the GOP is large, the clip can be inflated well beyond
+            // the requested range (e.g. 1s selection exporting as ~9s). We verify duration
+            // and fall through to frame-accurate re-encode if it snapped to an earlier keyframe.
+            // For audio: Audio packets are 10-30ms, but streaming containers (like Ogg Opus / MP3 Xing)
+            // have container page sync or metadata jitter of ~0.5s - 1.5s. Audio stream copy
+            // is fast and lossless, so we use a generous tolerance for audio.
             val actualMs = probeDurationMs(outputFile)
-            val tolerance = maxOf(300L, targetDurationMs / 20)
-            if (actualMs > 0 && kotlin.math.abs(actualMs - targetDurationMs) <= tolerance) {
+            val tolerance = if (isVideo) {
+                maxOf(400L, targetDurationMs / 20)
+            } else {
+                maxOf(1500L, targetDurationMs / 10)
+            }
+
+            val isValidDuration = if (actualMs > 0) {
+                kotlin.math.abs(actualMs - targetDurationMs) <= tolerance
+            } else {
+                // If retriever couldn't probe duration (common with some audio formats like Opus on certain ROMs),
+                // accept stream copy for audio if file was created successfully with valid size
+                !isVideo && outputFile.length() > 512L
+            }
+
+            if (isValidDuration) {
                 Log.d(TAG, "Stream copy accepted. Target=${targetDurationMs}ms actual=${actualMs}ms size=${outputFile.length()}")
                 return@withContext Result.success(outputFile)
             }
-            // actualMs <= 0 means the container is unparseable (a broken copy that would save
-            // as a phantom file that can't be opened), so we re-encode in that case too.
-            Log.w(TAG, "Stream copy rejected (target=${targetDurationMs}ms actual=${actualMs}ms). Re-encoding for accuracy.")
+            Log.w(TAG, "Stream copy rejected (target=${targetDurationMs}ms actual=${actualMs}ms tolerance=${tolerance}ms). Re-encoding for accuracy.")
         }
 
         // If stream copy was cancelled by the user, abort instead of re-encoding.
@@ -80,42 +94,68 @@ class FFmpegTrimmer(private val context: Context) {
             return@withContext Result.failure(Exception("Trimming cancelled by user"))
         }
 
-        // Strategy 2: Fallback to Precise Re-encoding if stream copy fails
-        Log.w(TAG, "Stream copy failed or incomplete. Falling back to precise re-encoding...")
+        // Strategy 2: Fallback to Precise Re-encoding if stream copy fails or was rejected
+        Log.w(TAG, "Falling back to precise re-encoding...")
         if (outputFile.exists()) {
             outputFile.delete()
         }
 
-        // Re-encoded H.264/AAC must live in a compatible container. The source extension may be
-        // .webm/.mkv (which can't hold H.264 reliably and which some devices' MediaStore rejects),
-        // so video re-encodes always target .mp4. Audio keeps the working output path.
-        val reencodeFile = if (isVideo) {
-            File(context.cacheDir, "trimmed_temp_${System.currentTimeMillis()}.mp4")
-        } else {
-            outputFile
-        }
+        // Re-encoded H.264/AAC video must live in a compatible container (.mp4).
+        // For audio, container must match the audio encoder (e.g., Opus in .opus, MP3 in .mp3, AAC in .m4a).
+        val reencodeFile: File
+        val reencodeCommand: String
 
-        val reencodeCommand = if (isVideo) {
-            // This ffmpeg-kit build ships without GPL codecs (no libx264/libx265), so we use
-            // the bundled OpenH264 encoder. NOTE: -preset is an x264/x265 option and this build
-            // rejects it ("Unrecognized option 'preset'"), so it must not be passed here.
-            "-y -ss $startSec -to $endSec -i \"${inputFile.absolutePath}\" -c:v libopenh264 -b:v 6M -pix_fmt yuv420p -c:a aac -b:a 192k \"${reencodeFile.absolutePath}\""
+        if (isVideo) {
+            reencodeFile = File(context.cacheDir, "trimmed_temp_${System.currentTimeMillis()}.mp4")
+            reencodeCommand = "-y -ss $startSec -i \"${inputFile.absolutePath}\" -t $targetDurationSec -c:v libopenh264 -b:v 6M -pix_fmt yuv420p -c:a aac -b:a 192k \"${reencodeFile.absolutePath}\""
         } else {
-            "-y -ss $startSec -to $endSec -i \"${inputFile.absolutePath}\" -c:a aac -b:a 192k \"${reencodeFile.absolutePath}\""
+            val (codecArgs, targetExt) = getAudioCodecAndExtension(extension)
+            reencodeFile = File(context.cacheDir, "trimmed_temp_${System.currentTimeMillis()}.$targetExt")
+            reencodeCommand = "-y -ss $startSec -i \"${inputFile.absolutePath}\" -t $targetDurationSec $codecArgs \"${reencodeFile.absolutePath}\""
         }
 
         Log.d(TAG, "Executing FFmpeg Re-encode command: $reencodeCommand")
         val reencodeResult = executeSession(reencodeCommand, targetDurationMs, onProgress)
 
-        if (reencodeResult && reencodeFile.exists() && reencodeFile.length() > 0 && probeDurationMs(reencodeFile) > 0) {
-            Log.d(TAG, "Re-encode succeeded. Output size: ${reencodeFile.length()} bytes")
-            Result.success(reencodeFile)
-        } else {
-            val failureMessage = lastSession?.failStackTrace
-                ?: lastSession?.allLogsAsString
-                ?: "FFmpeg execution failed with return code: $lastReturnCode"
-            Log.e(TAG, "FFmpeg trimming failed: $failureMessage")
-            Result.failure(Exception("Trimming failed: $failureMessage"))
+        // Strategy 3: Graceful fallback for audio if container-specific encoder is unavailable
+        if (!reencodeResult && !isVideo && !ReturnCode.isCancel(lastReturnCode)) {
+            Log.w(TAG, "Primary audio re-encode failed. Attempting universal AAC (.m4a) fallback...")
+            val fallbackFile = File(context.cacheDir, "trimmed_temp_${System.currentTimeMillis()}.m4a")
+            val fallbackCommand = "-y -ss $startSec -i \"${inputFile.absolutePath}\" -t $targetDurationSec -c:a aac -b:a 192k \"${fallbackFile.absolutePath}\""
+            val fallbackSuccess = executeSession(fallbackCommand, targetDurationMs, onProgress)
+            if (fallbackSuccess && fallbackFile.exists() && fallbackFile.length() > 0) {
+                Log.d(TAG, "Universal audio fallback succeeded.")
+                return@withContext Result.success(fallbackFile)
+            }
+        }
+
+        if (reencodeResult && reencodeFile.exists() && reencodeFile.length() > 0) {
+            val probedDuration = probeDurationMs(reencodeFile)
+            if (probedDuration > 0 || (!isVideo && reencodeFile.length() > 512L)) {
+                Log.d(TAG, "Re-encode succeeded. Output size: ${reencodeFile.length()} bytes")
+                return@withContext Result.success(reencodeFile)
+            }
+        }
+
+        val failureMessage = lastSession?.failStackTrace
+            ?: lastSession?.allLogsAsString
+            ?: "FFmpeg execution failed with return code: $lastReturnCode"
+        Log.e(TAG, "FFmpeg trimming failed: $failureMessage")
+        Result.failure(Exception("Trimming failed: $failureMessage"))
+    }
+
+    /**
+     * Determines the optimal audio codec and target container extension for frame-accurate re-encoding.
+     */
+    private fun getAudioCodecAndExtension(extension: String): Pair<String, String> {
+        return when (extension.lowercase(Locale.US)) {
+            "opus" -> Pair("-c:a opus -b:a 128k", "opus")
+            "ogg" -> Pair("-c:a libvorbis -b:a 160k", "ogg")
+            "mp3" -> Pair("-c:a libmp3lame -b:a 192k", "mp3")
+            "wav" -> Pair("-c:a pcm_s16le", "wav")
+            "flac" -> Pair("-c:a flac", "flac")
+            "m4a", "aac" -> Pair("-c:a aac -b:a 192k", "m4a")
+            else -> Pair("-c:a aac -b:a 192k", "m4a")
         }
     }
 

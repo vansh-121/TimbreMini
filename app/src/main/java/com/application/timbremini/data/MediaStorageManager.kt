@@ -131,7 +131,8 @@ class MediaStorageManager(private val context: Context) {
                     "mp3" -> "audio/mpeg"
                     "m4a", "aac" -> "audio/mp4"
                     "wav" -> "audio/wav"
-                    "ogg" -> "audio/ogg"
+                    "ogg", "opus" -> "audio/ogg"
+                    "flac" -> "audio/flac"
                     else -> "audio/mpeg"
                 }
             }
