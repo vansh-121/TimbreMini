@@ -69,4 +69,6 @@
     <string name="err_min_duration">Selection must be at least 0.5 seconds</string>
     <string name="err_load">Couldn\'t open that file</string>
     <string name="err_permission">Storage permission is needed to save your trimmed file</string>
+    <string name="theme_toggle_light_cd">Switch to light mode</string>
+    <string name="theme_toggle_dark_cd">Switch to dark mode</string>
 </resources>

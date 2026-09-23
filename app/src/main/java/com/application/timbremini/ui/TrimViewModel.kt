@@ -1,6 +1,7 @@
 package com.application.timbremini.ui
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -49,6 +50,20 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private val prefs = application.getSharedPreferences("timbre_mini_theme", Context.MODE_PRIVATE)
+
+    // null = follow system default; true = dark; false = light
+    private val _isDarkMode = MutableStateFlow<Boolean?>(
+        if (prefs.contains("dark_mode")) prefs.getBoolean("dark_mode", true) else null
+    )
+    val isDarkMode: StateFlow<Boolean?> = _isDarkMode.asStateFlow()
+
+    fun toggleTheme(currentDark: Boolean) {
+        val next = !currentDark
+        _isDarkMode.value = next
+        prefs.edit().putBoolean("dark_mode", next).apply()
+    }
 
     var player: ExoPlayer? = null
         private set

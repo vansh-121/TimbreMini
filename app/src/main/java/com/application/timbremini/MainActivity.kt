@@ -16,6 +16,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,8 +53,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TimbreMiniTheme {
-                TimbreMiniApp(viewModel = viewModel)
+            val userDarkMode by viewModel.isDarkMode.collectAsState()
+            val systemDark = isSystemInDarkTheme()
+            val isDark = userDarkMode ?: systemDark
+
+            TimbreMiniTheme(darkTheme = isDark) {
+                TimbreMiniApp(
+                    viewModel = viewModel,
+                    isDark = isDark,
+                    onToggleTheme = { viewModel.toggleTheme(isDark) }
+                )
             }
         }
     }
@@ -61,7 +70,11 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimbreMiniApp(viewModel: TrimViewModel) {
+fun TimbreMiniApp(
+    viewModel: TrimViewModel,
+    isDark: Boolean,
+    onToggleTheme: () -> Unit
+) {
     val context = LocalContext.current
 
     val selectedMedia by viewModel.selectedMedia.collectAsState()
@@ -140,6 +153,8 @@ fun TimbreMiniApp(viewModel: TrimViewModel) {
         topBar = {
             AppTopBar(
                 showChange = selectedMedia != null,
+                isDark = isDark,
+                onToggleTheme = onToggleTheme,
                 onBack = { viewModel.clearSelection() },
                 onChange = { checkAndLaunch { anyPicker.launch(arrayOf("audio/*", "video/*")) } }
             )
@@ -189,7 +204,13 @@ fun TimbreMiniApp(viewModel: TrimViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppTopBar(showChange: Boolean, onBack: () -> Unit, onChange: () -> Unit) {
+private fun AppTopBar(
+    showChange: Boolean,
+    isDark: Boolean,
+    onToggleTheme: () -> Unit,
+    onBack: () -> Unit,
+    onChange: () -> Unit
+) {
     TopAppBar(
         navigationIcon = {
             if (showChange) {
@@ -221,6 +242,16 @@ private fun AppTopBar(showChange: Boolean, onBack: () -> Unit, onChange: () -> U
             }
         },
         actions = {
+            IconButton(onClick = onToggleTheme) {
+                Icon(
+                    imageVector = if (isDark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                    contentDescription = stringResource(
+                        if (isDark) R.string.theme_toggle_light_cd else R.string.theme_toggle_dark_cd
+                    ),
+                    tint = TextPrimary
+                )
+            }
+
             if (showChange) {
                 TextButton(
                     onClick = onChange,
@@ -252,7 +283,7 @@ private fun BrandMark() {
         Icon(
             imageVector = Icons.Outlined.ContentCut,
             contentDescription = null,
-            tint = Ink,
+            tint = OnAccent,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -303,7 +334,7 @@ private fun EditorScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = Ink),
+            colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = OnAccent),
             shape = RoundedCornerShape(16.dp)
         ) {
             Icon(Icons.Outlined.ContentCut, contentDescription = null, modifier = Modifier.size(20.dp))

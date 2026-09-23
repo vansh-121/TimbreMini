@@ -163,7 +163,7 @@ fun PlayerPreviewComponent(
                 FilledIconButton(
                     onClick = onPlayPauseToggle,
                     colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = Amber, contentColor = Ink
+                        containerColor = Amber, contentColor = OnAccent
                     ),
                     modifier = Modifier.size(58.dp)
                 ) {

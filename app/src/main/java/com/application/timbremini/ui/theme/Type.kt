@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.sp
  * height on body copy, and a couple of dedicated label styles for the small
  * uppercase captions used throughout the UI.
  */
-val Typography = Typography(
+val AppTypography = Typography(
     headlineMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
