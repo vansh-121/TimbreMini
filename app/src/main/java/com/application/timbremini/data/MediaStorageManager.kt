@@ -31,13 +31,26 @@ class MediaStorageManager(private val context: Context) {
         try {
             val (displayName, size) = queryFileInfo(uri)
             val mimeType = resolveMimeType(uri, displayName)
-            val isVideo = mimeType.startsWith("video/") || displayName.endsWith(".mp4", ignoreCase = true)
-                    || displayName.endsWith(".mkv", ignoreCase = true)
-                    || displayName.endsWith(".webm", ignoreCase = true)
-                    || displayName.endsWith(".mov", ignoreCase = true)
+            val rawExt = displayName.substringAfterLast('.', "").lowercase(Locale.ROOT)
 
-            // Determine file extension
-            val extension = displayName.substringAfterLast('.', if (isVideo) "mp4" else "mp3")
+            val isKnownVideoExt = SUPPORTED_VIDEO_EXTENSIONS.contains(rawExt)
+            val isKnownAudioExt = SUPPORTED_AUDIO_EXTENSIONS.contains(rawExt)
+            val isVideoMime = mimeType.startsWith("video/")
+            val isAudioMime = mimeType.startsWith("audio/")
+
+            // Reject files that are clearly not supported media (e.g. .pdf, .zip, .apk, .txt, etc.)
+            if (!isKnownVideoExt && !isKnownAudioExt && !isVideoMime && !isAudioMime) {
+                return@withContext Result.failure(
+                    UnsupportedFormatException(
+                        fileName = displayName,
+                        extension = rawExt,
+                        message = "The selected file is not a supported audio or video format."
+                    )
+                )
+            }
+
+            val isVideo = isKnownVideoExt || (isVideoMime && !isKnownAudioExt)
+            val extension = if (rawExt.isNotEmpty()) rawExt else (if (isVideo) "mp4" else "mp3")
             val cacheFile = File(context.cacheDir, "input_source_${System.currentTimeMillis()}.$extension")
 
             // Copy input stream to cache
@@ -45,7 +58,16 @@ class MediaStorageManager(private val context: Context) {
                 FileOutputStream(cacheFile).use { output ->
                     input.copyTo(output)
                 }
-            } ?: return@withContext Result.failure(Exception("Unable to read selected media file"))
+            } ?: return@withContext Result.failure(
+                UnsupportedFormatException(displayName, extension, "Unable to read the selected file.")
+            )
+
+            if (!cacheFile.exists() || cacheFile.length() == 0L) {
+                cacheFile.delete()
+                return@withContext Result.failure(
+                    UnsupportedFormatException(displayName, extension, "The selected file is empty (0 bytes).")
+                )
+            }
 
             // Extract audio/video metadata using MediaMetadataRetriever
             val retriever = MediaMetadataRetriever()
@@ -69,11 +91,39 @@ class MediaStorageManager(private val context: Context) {
                 val bitrateStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
                 bitrate = bitrateStr?.toLongOrNull() ?: 0L
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to retrieve full metadata: ${e.message}")
+                Log.w(TAG, "Failed to retrieve full metadata via retriever: ${e.message}")
             } finally {
                 try {
                     retriever.release()
                 } catch (ignored: Exception) {}
+            }
+
+            // If MediaMetadataRetriever failed to read duration, probe with FFprobe
+            if (durationMs <= 0L) {
+                try {
+                    val infoSession = com.arthenica.ffmpegkit.FFprobeKit.getMediaInformation(cacheFile.absolutePath)
+                    val info = infoSession.mediaInformation
+                    if (info != null) {
+                        val durSec = info.duration?.toDoubleOrNull() ?: 0.0
+                        if (durSec > 0.0) {
+                            durationMs = (durSec * 1000.0).toLong()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "FFprobe duration extraction failed: ${e.message}")
+                }
+            }
+
+            // If still duration <= 0, the file contains no readable media stream or is corrupted
+            if (durationMs <= 0L) {
+                cacheFile.delete()
+                return@withContext Result.failure(
+                    UnsupportedFormatException(
+                        fileName = displayName,
+                        extension = extension,
+                        message = "Could not detect valid audio or video tracks. File may be corrupted or unplayable."
+                    )
+                )
             }
 
             val finalSize = if (size > 0) size else cacheFile.length()
@@ -288,5 +338,12 @@ class MediaStorageManager(private val context: Context) {
 
     companion object {
         private const val TAG = "MediaStorageManager"
+
+        val SUPPORTED_VIDEO_EXTENSIONS = setOf(
+            "mp4", "m4v", "mkv", "webm", "mov", "3gp", "avi", "ts"
+        )
+        val SUPPORTED_AUDIO_EXTENSIONS = setOf(
+            "mp3", "m4a", "aac", "wav", "ogg", "opus", "flac", "amr", "wma", "mka"
+        )
     }
 }

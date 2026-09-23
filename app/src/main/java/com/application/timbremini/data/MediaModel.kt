@@ -106,3 +106,21 @@ fun formatTimeMs(ms: Long, includeMillis: Boolean = false): String {
         }
     }
 }
+
+/**
+ * Information about a file that cannot be loaded or trimmed.
+ */
+data class UnsupportedFileInfo(
+    val fileName: String,
+    val extension: String,
+    val reason: String = ""
+)
+
+/**
+ * Exception thrown when a selected file format is not supported or corrupted.
+ */
+class UnsupportedFormatException(
+    val fileName: String,
+    val extension: String,
+    message: String
+) : Exception(message)

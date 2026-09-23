@@ -6,9 +6,9 @@
     <string name="empty_title">Trim media in seconds</string>
     <string name="empty_subtitle">Pick an audio or video file, set an in and out point, and export a clean cut to your device.</string>
     <string name="pick_video">Video</string>
-    <string name="pick_video_formats">MP4 · MKV · WebM</string>
+    <string name="pick_video_formats">MP4 · MKV · WebM · MOV · 3GP · AVI</string>
     <string name="pick_audio">Audio</string>
-    <string name="pick_audio_formats">MP3 · M4A · WAV</string>
+    <string name="pick_audio_formats">MP3 · M4A · AAC · WAV · Opus · FLAC</string>
     <string name="browse_all">Browse all files</string>
 
     <!-- Top bar -->
@@ -71,4 +71,14 @@
     <string name="err_permission">Storage permission is needed to save your trimmed file</string>
     <string name="theme_toggle_light_cd">Switch to light mode</string>
     <string name="theme_toggle_dark_cd">Switch to dark mode</string>
+
+    <!-- Unsupported format dialog -->
+    <string name="unsupported_format_title">Unsupported File Format</string>
+    <string name="unsupported_format_desc">TimbreMini cannot open \"%1$s\". This file format or codec is not supported for editing, or the file may be corrupted.</string>
+    <string name="supported_video_formats_label">Supported Video</string>
+    <string name="supported_video_formats_list">MP4, MKV, WebM, MOV, 3GP, AVI, TS</string>
+    <string name="supported_audio_formats_label">Supported Audio</string>
+    <string name="supported_audio_formats_list">MP3, M4A, AAC, WAV, Opus, OGG, FLAC, AMR, WMA</string>
+    <string name="choose_another_file">Choose Another File</string>
+    <string name="dismiss">Dismiss</string>
 </resources>

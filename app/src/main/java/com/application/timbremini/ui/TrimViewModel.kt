@@ -8,11 +8,14 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.PlaybackException
 import com.application.timbremini.R
 import com.application.timbremini.data.MediaItemData
 import com.application.timbremini.data.MediaStorageManager
 import com.application.timbremini.data.TrimResult
 import com.application.timbremini.data.TrimState
+import com.application.timbremini.data.UnsupportedFileInfo
+import com.application.timbremini.data.UnsupportedFormatException
 import com.application.timbremini.domain.FFmpegTrimmer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -29,6 +32,13 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _selectedMedia = MutableStateFlow<MediaItemData?>(null)
     val selectedMedia: StateFlow<MediaItemData?> = _selectedMedia.asStateFlow()
+
+    private val _unsupportedFile = MutableStateFlow<UnsupportedFileInfo?>(null)
+    val unsupportedFile: StateFlow<UnsupportedFileInfo?> = _unsupportedFile.asStateFlow()
+
+    fun dismissUnsupportedFile() {
+        _unsupportedFile.value = null
+    }
 
     private val _startMs = MutableStateFlow(0L)
     val startMs: StateFlow<Long> = _startMs.asStateFlow()
@@ -96,6 +106,21 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
                             }
                         }
                     }
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        _isPlaying.value = false
+                        val media = _selectedMedia.value
+                        if (media != null) {
+                            _selectedMedia.value = null
+                            stop()
+                            clearMediaItems()
+                            _unsupportedFile.value = UnsupportedFileInfo(
+                                fileName = media.name,
+                                extension = media.name.substringAfterLast('.', ""),
+                                reason = error.localizedMessage ?: "The device player could not decode this media stream."
+                            )
+                        }
+                    }
                 })
             }
             startPositionTracker()
@@ -156,7 +181,20 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }.onFailure { error ->
                 _trimState.value = TrimState.Idle
-                _errorMessage.value = error.message ?: getString(R.string.err_load)
+                _selectedMedia.value = null
+                if (error is UnsupportedFormatException) {
+                    _unsupportedFile.value = UnsupportedFileInfo(
+                        fileName = error.fileName,
+                        extension = error.extension,
+                        reason = error.message ?: ""
+                    )
+                } else {
+                    _unsupportedFile.value = UnsupportedFileInfo(
+                        fileName = uri.lastPathSegment ?: "Selected file",
+                        extension = "",
+                        reason = error.message ?: getString(R.string.err_load)
+                    )
+                }
             }
         }
     }

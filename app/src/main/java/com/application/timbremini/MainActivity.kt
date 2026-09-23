@@ -43,6 +43,7 @@ import com.application.timbremini.ui.components.PlayerPreviewComponent
 import com.application.timbremini.ui.components.ProcessingProgressDialog
 import com.application.timbremini.ui.components.RangeSliderComponent
 import com.application.timbremini.ui.components.TrimResultDialog
+import com.application.timbremini.ui.components.UnsupportedFormatDialog
 import com.application.timbremini.ui.theme.*
 
 class MainActivity : ComponentActivity() {
@@ -85,6 +86,7 @@ fun TimbreMiniApp(
     val isLoopTrimActive by viewModel.isLoopTrimActive.collectAsState()
     val trimState by viewModel.trimState.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val unsupportedFile by viewModel.unsupportedFile.collectAsState()
 
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { viewModel.loadMedia(it) }
@@ -196,6 +198,16 @@ fun TimbreMiniApp(
                     viewModel.dismissError()
                 }
                 TrimState.Idle -> Unit
+            }
+
+            unsupportedFile?.let { info ->
+                UnsupportedFormatDialog(
+                    info = info,
+                    onDismiss = { viewModel.dismissUnsupportedFile() },
+                    onChooseAnother = {
+                        checkAndLaunch { anyPicker.launch(arrayOf("audio/*", "video/*")) }
+                    }
+                )
             }
         }
     }
@@ -492,7 +504,7 @@ private fun PickerTile(
             .background(Surface1)
             .border(1.dp, Hairline, RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 22.dp, horizontal = 16.dp),
+            .padding(vertical = 20.dp, horizontal = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -504,10 +516,15 @@ private fun PickerTile(
         ) {
             Icon(icon, contentDescription = null, tint = Amber, modifier = Modifier.size(24.dp))
         }
-        Spacer(Modifier.height(14.dp))
-        Text(title, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-        Spacer(Modifier.height(3.dp))
-        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        Spacer(Modifier.height(12.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 16.sp),
+            color = TextMuted,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
