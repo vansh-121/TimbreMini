@@ -14,6 +14,7 @@
     <!-- Top bar -->
     <string name="change_file">Change</string>
     <string name="change_file_cd">Choose a different file</string>
+    <string name="back_home_cd">Back to home</string>
 
     <!-- Details -->
     <string name="label_duration">Duration</string>

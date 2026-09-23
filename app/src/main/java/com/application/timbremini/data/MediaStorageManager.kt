@@ -109,6 +109,10 @@ class MediaStorageManager(private val context: Context) {
         durationMs: Long
     ): Result<Pair<Uri, String>> = withContext(Dispatchers.IO) {
         try {
+            if (!trimmedFile.exists() || trimmedFile.length() == 0L) {
+                return@withContext Result.failure(Exception("Trimmed file is missing or empty"))
+            }
+
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val originalBaseName = originalName.substringBeforeLast('.')
             val extension = trimmedFile.extension.ifEmpty { if (isVideo) "mp4" else "mp3" }
@@ -116,7 +120,8 @@ class MediaStorageManager(private val context: Context) {
 
             val mimeType = if (isVideo) {
                 when (extension.lowercase()) {
-                    "mp4" -> "video/mp4"
+                    "mp4", "m4v" -> "video/mp4"
+                    "mov" -> "video/quicktime"
                     "mkv" -> "video/x-matroska"
                     "webm" -> "video/webm"
                     else -> "video/mp4"
@@ -131,66 +136,91 @@ class MediaStorageManager(private val context: Context) {
                 }
             }
 
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, outputFileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            // Some devices (notably MIUI/Xiaomi) return a URI from insert() but then throw
+            // FileNotFoundException("No item ...") when opening a stream for the Movies/Music
+            // collection. The Downloads collection is far more permissive, so we try the ideal
+            // location first and transparently fall back to Downloads if it fails.
+            data class SaveTarget(val collection: Uri, val relativePath: String?, val display: String, val includeDuration: Boolean)
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val relativeDir = if (isVideo) {
-                        Environment.DIRECTORY_MOVIES + "/TimbreMini"
-                    } else {
-                        Environment.DIRECTORY_MUSIC + "/TimbreMini"
-                    }
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, relativeDir)
-                    put(MediaStore.MediaColumns.IS_PENDING, 1)
-                }
-
-                if (isVideo) {
-                    put(MediaStore.Video.Media.DURATION, durationMs)
-                } else {
-                    put(MediaStore.Audio.Media.DURATION, durationMs)
-                }
-            }
-
-            val collectionUri = if (isVideo) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val targets = mutableListOf<SaveTarget>()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val primary = if (isVideo) {
                     MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
                 } else {
-                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-                }
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                } else {
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
                 }
+                val primaryDir = if (isVideo) "${Environment.DIRECTORY_MOVIES}/TimbreMini" else "${Environment.DIRECTORY_MUSIC}/TimbreMini"
+                targets.add(SaveTarget(primary, primaryDir, primaryDir, true))
+                val downloadsDir = "${Environment.DIRECTORY_DOWNLOADS}/TimbreMini"
+                targets.add(SaveTarget(MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), downloadsDir, downloadsDir, false))
+            } else {
+                val legacy = if (isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                val dir = if (isVideo) "Movies/TimbreMini" else "Music/TimbreMini"
+                targets.add(SaveTarget(legacy, null, dir, true))
             }
 
-            val insertedUri = contentResolver.insert(collectionUri, contentValues)
-                ?: return@withContext Result.failure(Exception("Failed to create MediaStore entry"))
-
-            // Write content
-            contentResolver.openOutputStream(insertedUri)?.use { outputStream ->
-                FileInputStream(trimmedFile).use { inputStream ->
-                    inputStream.copyTo(outputStream)
+            var lastError: Exception? = null
+            for (target in targets) {
+                try {
+                    val uri = writeToMediaStore(trimmedFile, outputFileName, mimeType, durationMs, target.collection, target.relativePath, target.includeDuration)
+                    return@withContext Result.success(Pair(uri, "${target.display}/$outputFileName"))
+                } catch (e: Exception) {
+                    lastError = e
+                    Log.w(TAG, "Save to ${target.display} failed: ${e.message}")
                 }
-            } ?: return@withContext Result.failure(Exception("Failed to open output stream"))
-
-            // Finish pending state on Android 10+
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val completeValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.IS_PENDING, 0)
-                }
-                contentResolver.update(insertedUri, completeValues, null, null)
             }
-
-            val folderName = if (isVideo) "Movies/TimbreMini" else "Music/TimbreMini"
-            val displayPath = "$folderName/$outputFileName"
-
-            Result.success(Pair(insertedUri, displayPath))
+            Result.failure(lastError ?: Exception("Failed to save to storage"))
         } catch (e: Exception) {
             Log.e(TAG, "Error saving trimmed file to device storage", e)
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Inserts one item into [collectionUri], writes [trimmedFile] into it, clears the pending
+     * flag, then verifies the item is actually readable. On any failure the row is deleted
+     * (so no phantom "No item" entry is left behind) and the exception is rethrown.
+     */
+    private fun writeToMediaStore(
+        trimmedFile: File,
+        outputFileName: String,
+        mimeType: String,
+        durationMs: Long,
+        collectionUri: Uri,
+        relativePath: String?,
+        includeDuration: Boolean
+    ): Uri {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, outputFileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                relativePath?.let { put(MediaStore.MediaColumns.RELATIVE_PATH, it) }
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+                if (includeDuration && durationMs > 0) {
+                    put(MediaStore.MediaColumns.DURATION, durationMs)
+                }
+            }
+        }
+
+        val uri = contentResolver.insert(collectionUri, values)
+            ?: throw Exception("MediaStore insert returned null")
+        try {
+            contentResolver.openOutputStream(uri)?.use { out ->
+                FileInputStream(trimmedFile).use { it.copyTo(out) }
+            } ?: throw Exception("openOutputStream returned null")
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                contentResolver.update(uri, ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }, null, null)
+            }
+
+            val firstByte = contentResolver.openInputStream(uri)?.use { it.read() } ?: -1
+            if (firstByte < 0) throw Exception("Saved file is not readable")
+            return uri
+        } catch (e: Exception) {
+            try { contentResolver.delete(uri, null, null) } catch (_: Exception) { /* ignore */ }
+            throw e
         }
     }
 

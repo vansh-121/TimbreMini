@@ -121,6 +121,9 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
             _trimState.value = TrimState.Preparing(getString(R.string.analyzing))
             _errorMessage.value = null
 
+            // Discard any previously cached source/temp files before importing the new one.
+            storageManager.cleanCache()
+
             val result = storageManager.prepareMediaItem(uri)
             result.onSuccess { item ->
                 _selectedMedia.value = item
@@ -264,6 +267,27 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
         if (_trimState.value is TrimState.Error) {
             _trimState.value = TrimState.Idle
         }
+    }
+
+    /**
+     * Clears the current selection and returns to the home/empty screen. Stops playback,
+     * resets the trim range and state, and frees the cached source file.
+     */
+    fun clearSelection() {
+        trimmingJob?.cancel()
+        ffmpegTrimmer.cancel()
+        player?.let { p ->
+            p.stop()
+            p.clearMediaItems()
+        }
+        _selectedMedia.value = null
+        _startMs.value = 0L
+        _endMs.value = 0L
+        _currentPositionMs.value = 0L
+        _isPlaying.value = false
+        _trimState.value = TrimState.Idle
+        _errorMessage.value = null
+        storageManager.cleanCache()
     }
 
     private fun getString(resId: Int): String = getApplication<Application>().getString(resId)

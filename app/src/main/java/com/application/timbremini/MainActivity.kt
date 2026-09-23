@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -126,6 +128,11 @@ fun TimbreMiniApp(viewModel: TrimViewModel) {
         }
     }
 
+    // While editing, the system back button returns to the home screen instead of exiting.
+    BackHandler(enabled = selectedMedia != null) {
+        viewModel.clearSelection()
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Ink,
@@ -133,6 +140,7 @@ fun TimbreMiniApp(viewModel: TrimViewModel) {
         topBar = {
             AppTopBar(
                 showChange = selectedMedia != null,
+                onBack = { viewModel.clearSelection() },
                 onChange = { checkAndLaunch { anyPicker.launch(arrayOf("audio/*", "video/*")) } }
             )
         }
@@ -181,8 +189,19 @@ fun TimbreMiniApp(viewModel: TrimViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppTopBar(showChange: Boolean, onChange: () -> Unit) {
+private fun AppTopBar(showChange: Boolean, onBack: () -> Unit, onChange: () -> Unit) {
     TopAppBar(
+        navigationIcon = {
+            if (showChange) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = stringResource(R.string.back_home_cd),
+                        tint = TextPrimary
+                    )
+                }
+            }
+        },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BrandMark()
