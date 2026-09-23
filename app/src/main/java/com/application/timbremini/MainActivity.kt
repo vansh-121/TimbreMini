@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -287,20 +289,14 @@ private fun AppTopBar(
 
 @Composable
 private fun BrandMark() {
-    Box(
+    Image(
+        painter = painterResource(R.drawable.app_icon_master),
+        contentDescription = stringResource(R.string.app_name),
         modifier = Modifier
             .size(36.dp)
-            .clip(CircleShape)
-            .background(Amber.copy(alpha = 0.15f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.ContentCut,
-            contentDescription = null,
-            tint = Amber,
-            modifier = Modifier.size(18.dp)
-        )
-    }
+            .clip(RoundedCornerShape(10.dp))
+            .border(0.5.dp, Hairline, RoundedCornerShape(10.dp))
+    )
 }
 // APPEND2
 
