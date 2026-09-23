@@ -2,15 +2,14 @@ package com.application.timbremini.ui
 
 import android.app.Application
 import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.application.timbremini.R
 import com.application.timbremini.data.MediaItemData
 import com.application.timbremini.data.MediaStorageManager
-import com.application.timbremini.data.TrimProgress
 import com.application.timbremini.data.TrimResult
 import com.application.timbremini.data.TrimState
 import com.application.timbremini.domain.FFmpegTrimmer
@@ -72,11 +71,13 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         if (playbackState == Player.STATE_ENDED) {
+                            // Reached the natural end of the media; loop back only if enabled.
                             if (_isLoopTrimActive.value) {
                                 seekTo(_startMs.value)
                                 play()
                             } else {
-                                _isPlaying.value = false
+                                pause()
+                                seekTo(_endMs.value)
                             }
                         }
                     }
@@ -94,12 +95,19 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
                     val pos = p.currentPosition
                     _currentPositionMs.value = pos
 
-                    // If Loop Trim is enabled and position passes endMs, loop back to startMs
-                    if (_isLoopTrimActive.value && p.isPlaying) {
+                    // Playback is always constrained to the trim selection. When the
+                    // playhead passes the out-point, loop back if enabled, otherwise stop.
+                    if (p.isPlaying) {
                         val end = _endMs.value
                         val start = _startMs.value
                         if (end > start && pos >= end) {
-                            p.seekTo(start)
+                            if (_isLoopTrimActive.value) {
+                                p.seekTo(start)
+                            } else {
+                                p.pause()
+                                p.seekTo(end)
+                                _currentPositionMs.value = end
+                            }
                         }
                     }
                 }
@@ -110,7 +118,7 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadMedia(uri: Uri) {
         viewModelScope.launch {
-            _trimState.value = TrimState.Preparing("Analyzing media file...")
+            _trimState.value = TrimState.Preparing(getString(R.string.analyzing))
             _errorMessage.value = null
 
             val result = storageManager.prepareMediaItem(uri)
@@ -130,7 +138,7 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }.onFailure { error ->
                 _trimState.value = TrimState.Idle
-                _errorMessage.value = error.message ?: "Failed to load media file"
+                _errorMessage.value = error.message ?: getString(R.string.err_load)
             }
         }
     }
@@ -156,8 +164,9 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
             if (p.isPlaying) {
                 p.pause()
             } else {
+                // Always play the selection: if the head is outside the range, restart from the in-point.
                 val current = p.currentPosition
-                if (_isLoopTrimActive.value && (current < _startMs.value || current >= _endMs.value)) {
+                if (current < _startMs.value || current >= _endMs.value) {
                     p.seekTo(_startMs.value)
                 }
                 p.play()
@@ -188,7 +197,7 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
         val end = _endMs.value
 
         if (end - start < 500L) {
-            _errorMessage.value = "Trim duration must be at least 0.5 seconds"
+            _errorMessage.value = getString(R.string.err_min_duration)
             return
         }
 
@@ -197,7 +206,7 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
 
         trimmingJob?.cancel()
         trimmingJob = viewModelScope.launch {
-            _trimState.value = TrimState.Preparing("Preparing FFmpeg trimming...")
+            _trimState.value = TrimState.Preparing(getString(R.string.preparing))
 
             val trimDuration = end - start
             val trimResult = ffmpegTrimmer.trim(
@@ -211,7 +220,7 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             trimResult.onSuccess { trimmedFile ->
-                _trimState.value = TrimState.Saving("Saving to device storage...")
+                _trimState.value = TrimState.Saving(getString(R.string.saving))
 
                 val saveResult = storageManager.saveTrimmedFileToDeviceStorage(
                     trimmedFile = trimmedFile,
@@ -256,6 +265,8 @@ class TrimViewModel(application: Application) : AndroidViewModel(application) {
             _trimState.value = TrimState.Idle
         }
     }
+
+    private fun getString(resId: Int): String = getApplication<Application>().getString(resId)
 
     override fun onCleared() {
         super.onCleared()

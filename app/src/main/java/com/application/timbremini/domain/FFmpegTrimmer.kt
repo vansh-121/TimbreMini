@@ -17,6 +17,10 @@ class FFmpegTrimmer(private val context: Context) {
 
     private var activeSession: FFmpegSession? = null
 
+    /** Most recently completed session; used for cancellation detection and error diagnostics. */
+    private var lastSession: FFmpegSession? = null
+    private var lastReturnCode: ReturnCode? = null
+
     /**
      * Trims media from [startMs] to [endMs] in the background.
      *
@@ -58,8 +62,8 @@ class FFmpegTrimmer(private val context: Context) {
             return@withContext Result.success(outputFile)
         }
 
-        // If stream copy was cancelled by user, abort
-        if (ReturnCode.isCancel(activeSession?.returnCode)) {
+        // If stream copy was cancelled by the user, abort instead of re-encoding.
+        if (ReturnCode.isCancel(lastReturnCode)) {
             return@withContext Result.failure(Exception("Trimming cancelled by user"))
         }
 
@@ -82,9 +86,9 @@ class FFmpegTrimmer(private val context: Context) {
             Log.d(TAG, "Re-encode succeeded. Output size: ${outputFile.length()} bytes")
             Result.success(outputFile)
         } else {
-            val failureMessage = activeSession?.failStackTrace
-                ?: activeSession?.allLogsAsString
-                ?: "FFmpeg execution failed with return code: ${activeSession?.returnCode}"
+            val failureMessage = lastSession?.failStackTrace
+                ?: lastSession?.allLogsAsString
+                ?: "FFmpeg execution failed with return code: $lastReturnCode"
             Log.e(TAG, "FFmpeg trimming failed: $failureMessage")
             Result.failure(Exception("Trimming failed: $failureMessage"))
         }
@@ -98,9 +102,10 @@ class FFmpegTrimmer(private val context: Context) {
         val session = FFmpegKit.executeAsync(
             command,
             { completedSession ->
+                lastSession = completedSession
+                lastReturnCode = completedSession.returnCode
                 activeSession = null
-                val returnCode = completedSession.returnCode
-                if (ReturnCode.isSuccess(returnCode)) {
+                if (ReturnCode.isSuccess(completedSession.returnCode)) {
                     continuation.resume(true)
                 } else {
                     continuation.resume(false)

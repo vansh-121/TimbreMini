@@ -1,3 +1,71 @@
 <resources>
     <string name="app_name">TimbreMini</string>
+    <string name="app_tagline">Audio &amp; video trimmer</string>
+
+    <!-- Empty state -->
+    <string name="empty_title">Trim media in seconds</string>
+    <string name="empty_subtitle">Pick an audio or video file, set an in and out point, and export a clean cut to your device.</string>
+    <string name="pick_video">Video</string>
+    <string name="pick_video_formats">MP4 · MKV · WebM</string>
+    <string name="pick_audio">Audio</string>
+    <string name="pick_audio_formats">MP3 · M4A · WAV</string>
+    <string name="browse_all">Browse all files</string>
+
+    <!-- Top bar -->
+    <string name="change_file">Change</string>
+    <string name="change_file_cd">Choose a different file</string>
+
+    <!-- Details -->
+    <string name="label_duration">Duration</string>
+    <string name="label_size">Size</string>
+    <string name="label_resolution">Resolution</string>
+    <string name="label_format">Format</string>
+
+    <!-- Player -->
+    <string name="badge_video">Video</string>
+    <string name="badge_audio">Audio</string>
+    <string name="loop_range">Loop range</string>
+    <string name="loop_range_cd">Loop playback within the trim range</string>
+    <string name="seek_start_cd">Jump to trim start</string>
+    <string name="seek_end_cd">Jump to trim end</string>
+    <string name="play_cd">Play</string>
+    <string name="pause_cd">Pause</string>
+
+    <!-- Range -->
+    <string name="trim_range">Trim range</string>
+    <string name="marker_start">In</string>
+    <string name="marker_end">Out</string>
+    <string name="playhead">Playhead</string>
+    <string name="nudge_back">Nudge back 0.5s</string>
+    <string name="nudge_fwd">Nudge forward 0.5s</string>
+
+    <!-- Actions -->
+    <string name="export">Export trimmed file</string>
+
+    <!-- Processing dialog -->
+    <string name="processing_title">Trimming</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Result dialog -->
+    <string name="result_title">Saved</string>
+    <string name="result_subtitle">Your trimmed file is in your library.</string>
+    <string name="saved_to">Saved to</string>
+    <string name="copy_path_cd">Copy path</string>
+    <string name="path_copied">Path copied</string>
+    <string name="preview_result">Preview</string>
+    <string name="playing_result">Playing…</string>
+    <string name="share">Share</string>
+    <string name="open">Open</string>
+    <string name="done">Done</string>
+    <string name="share_chooser">Share trimmed file</string>
+    <string name="no_open_app">No app can open this file</string>
+
+    <!-- Errors / status -->
+    <string name="analyzing">Analyzing file…</string>
+    <string name="preparing">Preparing…</string>
+    <string name="trimming_ffmpeg">Trimming…</string>
+    <string name="saving">Saving to your library…</string>
+    <string name="err_min_duration">Selection must be at least 0.5 seconds</string>
+    <string name="err_load">Couldn\'t open that file</string>
+    <string name="err_permission">Storage permission is needed to save your trimmed file</string>
 </resources>

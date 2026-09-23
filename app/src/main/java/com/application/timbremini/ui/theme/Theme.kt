@@ -1,50 +1,46 @@
 package com.application.timbremini.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val StudioDarkColorScheme = darkColorScheme(
-    primary = NeonCyan,
-    onPrimary = DarkBackground,
-    primaryContainer = DarkSurfaceVariant,
-    onPrimaryContainer = NeonCyan,
-    secondary = NeonPurple,
-    onSecondary = DarkBackground,
-    secondaryContainer = DarkSurfaceVariant,
-    onSecondaryContainer = NeonPurple,
-    tertiary = NeonAmber,
-    onTertiary = DarkBackground,
-    background = DarkBackground,
+private val StudioColorScheme = darkColorScheme(
+    primary = Amber,
+    onPrimary = Ink,
+    primaryContainer = Surface2,
+    onPrimaryContainer = Amber,
+    secondary = TextSecondary,
+    onSecondary = Ink,
+    secondaryContainer = Surface2,
+    onSecondaryContainer = TextPrimary,
+    background = Ink,
     onBackground = TextPrimary,
-    surface = DarkSurface,
+    surface = Surface1,
     onSurface = TextPrimary,
-    surfaceVariant = DarkSurfaceVariant,
+    surfaceVariant = Surface2,
     onSurfaceVariant = TextSecondary,
-    outline = DarkBorder,
-    error = NeonRed
+    outline = Hairline,
+    outlineVariant = Hairline,
+    error = Danger,
+    onError = Ink
 )
 
 @Composable
 fun TimbreMiniTheme(
-    darkTheme: Boolean = true, // Default to sleek studio dark theme
     content: @Composable () -> Unit
 ) {
-    val colorScheme = StudioDarkColorScheme
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
-                window.statusBarColor = DarkBackground.toArgb()
-                window.navigationBarColor = DarkBackground.toArgb()
+                window.statusBarColor = Ink.toArgb()
+                window.navigationBarColor = Ink.toArgb()
                 val insetsController = WindowCompat.getInsetsController(window, view)
                 insetsController.isAppearanceLightStatusBars = false
                 insetsController.isAppearanceLightNavigationBars = false
@@ -53,7 +49,7 @@ fun TimbreMiniTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = StudioColorScheme,
         typography = Typography,
         content = content
     )

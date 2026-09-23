@@ -134,7 +134,6 @@ class MediaStorageManager(private val context: Context) {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, outputFileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                put(MediaStore.MediaColumns.SIZE, trimmedFile.length())
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     val relativeDir = if (isVideo) {

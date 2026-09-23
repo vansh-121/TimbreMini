@@ -1,19 +1,22 @@
 package com.application.timbremini.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.application.timbremini.R
 import com.application.timbremini.data.TrimProgress
 import com.application.timbremini.ui.theme.*
 
@@ -24,99 +27,71 @@ fun ProcessingProgressDialog(
     onCancel: () -> Unit
 ) {
     Dialog(
-        onDismissRequest = { /* Prevent dismiss by tapping outside */ },
+        onDismissRequest = { /* modal while processing */ },
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
     ) {
-        Card(
+        Column(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .wrapContentHeight(),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            shape = RoundedCornerShape(20.dp),
-            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+                .clip(RoundedCornerShape(22.dp))
+                .background(Surface1)
+                .border(1.dp, Hairline, RoundedCornerShape(22.dp))
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "FFmpeg Processing",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
+            Text(
+                text = stringResource(R.string.processing_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = TextPrimary
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(status, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+
+            Spacer(Modifier.height(24.dp))
+
+            if (progress != null) {
+                LinearProgressIndicator(
+                    progress = { (progress.percent / 100f).coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = Amber,
+                    trackColor = TrackInactive
                 )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = status,
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                if (progress != null) {
-                    val progressFloat = (progress.percent / 100f).coerceIn(0f, 1f)
-
-                    LinearProgressIndicator(
-                        progress = { progressFloat },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp),
-                        color = NeonCyan,
-                        trackColor = TrackInactive
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "${progress.percent.toInt()}%",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = NeonCyan,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        )
-
-                        Text(
-                            text = "Speed: ${progress.speed}",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = TextSecondary,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        )
-                    }
-                } else {
-                    CircularProgressIndicator(
-                        color = NeonCyan,
-                        modifier = Modifier.size(40.dp),
-                        strokeWidth = 3.dp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                OutlinedButton(
-                    onClick = onCancel,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NeonRed),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(NeonRed.copy(alpha = 0.5f))),
-                    shape = RoundedCornerShape(10.dp)
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Cancel",
-                        modifier = Modifier.size(16.dp)
+                    Text(
+                        text = "${progress.percent.toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                        color = Amber
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Cancel Trimming")
+                    Text(
+                        text = progress.speed,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = TextSecondary
+                    )
                 }
+            } else {
+                CircularProgressIndicator(
+                    color = Amber,
+                    modifier = Modifier.size(38.dp),
+                    strokeWidth = 3.dp
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            TextButton(
+                onClick = onCancel,
+                colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
+            ) {
+                Icon(Icons.Outlined.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.cancel), style = MaterialTheme.typography.labelLarge)
             }
         }
     }

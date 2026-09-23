@@ -17,21 +17,19 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -73,63 +71,54 @@ fun TimbreMiniApp(viewModel: TrimViewModel) {
     val trimState by viewModel.trimState.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
 
-    // File pickers
-    val videoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { viewModel.loadMedia(it) }
+    }
+    val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { viewModel.loadMedia(it) }
+    }
+    val anyPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.loadMedia(it) }
     }
 
-    val audioPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.loadMedia(it) }
-    }
-
-    val anyMediaPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let { viewModel.loadMedia(it) }
-    }
-
-    // Permission launcher
-    val permissionsToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        arrayOf(
-            Manifest.permission.READ_MEDIA_AUDIO,
-            Manifest.permission.READ_MEDIA_VIDEO
-        )
-    } else {
-        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-    }
-
+    // The SAF pickers need no runtime permission to read. WRITE_EXTERNAL_STORAGE is
+    // only required on API <= 28 to insert the export into MediaStore, so that is the
+    // only case where we prompt.
+    val needsLegacyPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+    val legacyPermissions = arrayOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
     var pendingPickerAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (permissions.values.all { it }) {
             pendingPickerAction?.invoke()
         } else {
-            Toast.makeText(context, "Storage permission is needed to select files", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.err_permission), Toast.LENGTH_LONG).show()
         }
         pendingPickerAction = null
     }
 
     fun checkAndLaunch(action: () -> Unit) {
-        val hasPermissions = permissionsToRequest.all {
+        if (!needsLegacyPermission) {
+            action()
+            return
+        }
+        val granted = legacyPermissions.all {
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
-        if (hasPermissions || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (granted) {
             action()
         } else {
             pendingPickerAction = action
-            permissionLauncher.launch(permissionsToRequest)
+            permissionLauncher.launch(legacyPermissions)
         }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-
     LaunchedEffect(errorMessage) {
         errorMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
@@ -139,74 +128,12 @@ fun TimbreMiniApp(viewModel: TrimViewModel) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = DarkBackground,
+        containerColor = Ink,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    Brush.linearGradient(listOf(NeonCyan, NeonPurple))
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCut,
-                                contentDescription = null,
-                                tint = DarkBackground,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Timbre Mini",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
-                                )
-                            )
-                            Text(
-                                text = "Audio & Video Trimmer",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = TextSecondary,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    if (selectedMedia != null) {
-                        FilledTonalButton(
-                            onClick = {
-                                checkAndLaunch { anyMediaPickerLauncher.launch(arrayOf("audio/*", "video/*")) }
-                            },
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = DarkSurfaceVariant,
-                                contentColor = NeonCyan
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FolderOpen,
-                                contentDescription = "Change File",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Change", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground,
-                    titleContentColor = TextPrimary
-                )
+            AppTopBar(
+                showChange = selectedMedia != null,
+                onChange = { checkAndLaunch { anyPicker.launch(arrayOf("audio/*", "video/*")) } }
             )
         }
     ) { innerPadding ->
@@ -217,331 +144,197 @@ fun TimbreMiniApp(viewModel: TrimViewModel) {
         ) {
             val currentMedia = selectedMedia
             if (currentMedia == null) {
-                // Empty State: Prompt user to pick audio or video
-                EmptyMediaState(
-                    onPickVideo = { checkAndLaunch { videoPickerLauncher.launch("video/*") } },
-                    onPickAudio = { checkAndLaunch { audioPickerLauncher.launch("audio/*") } },
-                    onPickAny = { checkAndLaunch { anyMediaPickerLauncher.launch(arrayOf("audio/*", "video/*")) } }
+                EmptyState(
+                    onPickVideo = { checkAndLaunch { videoPicker.launch("video/*") } },
+                    onPickAudio = { checkAndLaunch { audioPicker.launch("audio/*") } },
+                    onPickAny = { checkAndLaunch { anyPicker.launch(arrayOf("audio/*", "video/*")) } }
                 )
             } else {
-                // Media Editor Screen
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Preview Component with synchronized playback
-                    PlayerPreviewComponent(
-                        mediaItem = currentMedia,
-                        player = viewModel.player,
-                        isPlaying = isPlaying,
-                        isLoopTrimActive = isLoopTrimActive,
-                        currentPositionMs = currentPositionMs,
-                        onPlayPauseToggle = { viewModel.togglePlayPause() },
-                        onSeekToStart = { viewModel.seekToStart() },
-                        onSeekToEnd = { viewModel.seekToEnd() },
-                        onToggleLoopTrim = { viewModel.toggleLoopTrim() }
-                    )
-
-                    // Media Metadata Card
-                    MediaDetailsCard(media = currentMedia)
-
-                    // Range Seek Bar Component
-                    RangeSliderComponent(
-                        totalDurationMs = currentMedia.durationMs,
-                        startMs = startMs,
-                        endMs = endMs,
-                        currentPositionMs = currentPositionMs,
-                        onRangeChange = { start, end -> viewModel.updateTrimRange(start, end) }
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Execute Trimming Action Button
-                    Button(
-                        onClick = { viewModel.startTrim() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = NeonCyan,
-                            contentColor = DarkBackground
-                        ),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCut,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "Trim & Save to Device Storage",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
+                EditorScreen(
+                    media = currentMedia,
+                    viewModel = viewModel,
+                    startMs = startMs,
+                    endMs = endMs,
+                    currentPositionMs = currentPositionMs,
+                    isPlaying = isPlaying,
+                    isLoopTrimActive = isLoopTrimActive
+                )
             }
 
-            // Processing Progress Dialog (FFmpeg active)
             when (val state = trimState) {
-                is TrimState.Preparing -> {
-                    ProcessingProgressDialog(
-                        status = state.status,
-                        progress = null,
-                        onCancel = { viewModel.cancelTrim() }
-                    )
+                is TrimState.Preparing -> ProcessingProgressDialog(state.status, null) { viewModel.cancelTrim() }
+                is TrimState.Processing -> ProcessingProgressDialog(
+                    stringResource(R.string.trimming_ffmpeg), state.progress
+                ) { viewModel.cancelTrim() }
+                is TrimState.Saving -> ProcessingProgressDialog(state.status, null) { viewModel.cancelTrim() }
+                is TrimState.Success -> TrimResultDialog(state.result) { viewModel.dismissResult() }
+                is TrimState.Error -> LaunchedEffect(state.message) {
+                    snackbarHostState.showSnackbar(state.message)
+                    viewModel.dismissError()
                 }
-                is TrimState.Processing -> {
-                    ProcessingProgressDialog(
-                        status = "Trimming with FFmpeg...",
-                        progress = state.progress,
-                        onCancel = { viewModel.cancelTrim() }
-                    )
-                }
-                is TrimState.Saving -> {
-                    ProcessingProgressDialog(
-                        status = state.status,
-                        progress = null,
-                        onCancel = { viewModel.cancelTrim() }
-                    )
-                }
-                is TrimState.Success -> {
-                    TrimResultDialog(
-                        result = state.result,
-                        onDismiss = { viewModel.dismissResult() }
-                    )
-                }
-                is TrimState.Error -> {
-                    LaunchedEffect(state.message) {
-                        snackbarHostState.showSnackbar(state.message)
-                        viewModel.dismissError()
-                    }
-                }
-                TrimState.Idle -> { /* Do nothing */ }
+                TrimState.Idle -> Unit
             }
         }
     }
 }
+// APPEND_MARKER
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppTopBar(showChange: Boolean, onChange: () -> Unit) {
+    TopAppBar(
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BrandMark()
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = stringResource(R.string.app_tagline),
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.3.sp),
+                        color = TextMuted
+                    )
+                }
+            }
+        },
+        actions = {
+            if (showChange) {
+                TextButton(
+                    onClick = onChange,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Amber)
+                ) {
+                    Icon(Icons.Outlined.SwapHoriz, contentDescription = stringResource(R.string.change_file_cd), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.change_file), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Ink,
+            titleContentColor = TextPrimary,
+            actionIconContentColor = Amber
+        )
+    )
+}
 
 @Composable
-fun EmptyMediaState(
-    onPickVideo: () -> Unit,
-    onPickAudio: () -> Unit,
-    onPickAny: () -> Unit
+private fun BrandMark() {
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .clip(RoundedCornerShape(11.dp))
+            .background(Amber),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.ContentCut,
+            contentDescription = null,
+            tint = Ink,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+// APPEND2
+
+@Composable
+private fun EditorScreen(
+    media: MediaItemData,
+    viewModel: TrimViewModel,
+    startMs: Long,
+    endMs: Long,
+    currentPositionMs: Long,
+    isPlaying: Boolean,
+    isLoopTrimActive: Boolean
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        // App Hero Glow Icon
-        Box(
-            modifier = Modifier
-                .size(90.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        listOf(NeonCyan.copy(alpha = 0.25f), Color.Transparent)
-                    )
-                )
-                .border(2.dp, NeonCyan.copy(alpha = 0.4f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.MovieFilter,
-                contentDescription = null,
-                tint = NeonCyan,
-                modifier = Modifier.size(46.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Select Media to Trim",
-            style = MaterialTheme.typography.headlineMedium.copy(
-                color = TextPrimary,
-                fontWeight = FontWeight.Bold
-            )
+        PlayerPreviewComponent(
+            mediaItem = media,
+            player = viewModel.player,
+            isPlaying = isPlaying,
+            isLoopTrimActive = isLoopTrimActive,
+            currentPositionMs = currentPositionMs,
+            onPlayPauseToggle = { viewModel.togglePlayPause() },
+            onSeekToStart = { viewModel.seekToStart() },
+            onSeekToEnd = { viewModel.seekToEnd() },
+            onToggleLoopTrim = { viewModel.toggleLoopTrim() }
         )
 
-        Text(
-            text = "Cut and save any audio or video file with fast FFmpeg processing and Scoped Storage export.",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = TextSecondary,
-                lineHeight = 22.sp
-            ),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        DetailsStrip(media = media)
+
+        RangeSliderComponent(
+            totalDurationMs = media.durationMs,
+            startMs = startMs,
+            endMs = endMs,
+            currentPositionMs = currentPositionMs,
+            onRangeChange = { s, e -> viewModel.updateTrimRange(s, e) }
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Action Buttons Row: Video & Audio
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            MediaPickerCard(
-                title = "Select Video",
-                subtitle = "MP4, MKV, WebM",
-                icon = Icons.Default.Videocam,
-                accentColor = NeonCyan,
-                modifier = Modifier.weight(1f),
-                onClick = onPickVideo
-            )
-
-            MediaPickerCard(
-                title = "Select Audio",
-                subtitle = "MP3, M4A, WAV",
-                icon = Icons.Default.Audiotrack,
-                accentColor = NeonPurple,
-                modifier = Modifier.weight(1f),
-                onClick = onPickAudio
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Browse All Files button
-        OutlinedButton(
-            onClick = onPickAny,
+        Button(
+            onClick = { viewModel.startTrim() },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
-            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)),
-            shape = RoundedCornerShape(12.dp)
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = Ink),
+            shape = RoundedCornerShape(16.dp)
         ) {
+            Icon(Icons.Outlined.ContentCut, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(stringResource(R.string.export), style = MaterialTheme.typography.titleMedium)
+        }
+
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun DetailsStrip(media: MediaItemData) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Surface1)
+            .border(1.dp, Hairline, RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                imageVector = Icons.Default.FolderOpen,
+                imageVector = if (media.isVideo) Icons.Outlined.Movie else Icons.Outlined.MusicNote,
                 contentDescription = null,
+                tint = Amber,
                 modifier = Modifier.size(18.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Browse All Files")
-        }
-    }
-}
-
-@Composable
-fun MediaPickerCard(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    accentColor: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(16.dp),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
+            Spacer(Modifier.width(8.dp))
             Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall.copy(
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    color = TextSecondary,
-                    fontSize = 11.sp
-                )
+                text = media.name,
+                style = MaterialTheme.typography.titleSmall,
+                color = TextPrimary,
+                maxLines = 1,
+                modifier = Modifier.weight(1f)
             )
         }
-    }
-}
-
-@Composable
-fun MediaDetailsCard(media: MediaItemData) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(16.dp),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Spacer(Modifier.height(14.dp))
+        HorizontalDivider(color = Hairline)
+        Spacer(Modifier.height(14.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = if (media.isVideo) Icons.Default.Movie else Icons.Default.MusicNote,
-                    contentDescription = null,
-                    tint = if (media.isVideo) NeonCyan else NeonPurple,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = media.name,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextPrimary,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                DetailItem(label = "TOTAL DURATION", value = media.formattedDuration)
-                DetailItem(label = "FILE SIZE", value = media.formattedSize)
-                DetailItem(
-                    label = if (media.isVideo) "RESOLUTION" else "MIME TYPE",
-                    value = if (media.isVideo && media.width > 0) "${media.width}x${media.height}" else media.mimeType.substringAfter('/')
-                )
-            }
+            DetailItem(stringResource(R.string.label_duration), media.formattedDuration)
+            DetailItem(stringResource(R.string.label_size), media.formattedSize)
+            DetailItem(
+                label = if (media.isVideo) stringResource(R.string.label_resolution) else stringResource(R.string.label_format),
+                value = if (media.isVideo && media.width > 0) "${media.width}×${media.height}" else media.mimeType.substringAfter('/').uppercase()
+            )
         }
     }
 }
@@ -549,21 +342,125 @@ fun MediaDetailsCard(media: MediaItemData) {
 @Composable
 private fun DetailItem(label: String, value: String) {
     Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                color = TextMuted,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold
-            )
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall.copy(
-                color = TextSecondary,
-                fontWeight = FontWeight.Medium
-            )
-        )
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        Spacer(Modifier.height(4.dp))
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
     }
 }
+// APPEND3
+
+@Composable
+private fun EmptyState(
+    onPickVideo: () -> Unit,
+    onPickAudio: () -> Unit,
+    onPickAny: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(68.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Surface1)
+                .border(1.dp, Hairline, RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ContentCut,
+                contentDescription = null,
+                tint = Amber,
+                modifier = Modifier.size(30.dp)
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+        Text(
+            text = stringResource(R.string.empty_title),
+            style = MaterialTheme.typography.headlineMedium,
+            color = TextPrimary,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = stringResource(R.string.empty_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+
+        Spacer(Modifier.height(28.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            PickerTile(
+                title = stringResource(R.string.pick_video),
+                subtitle = stringResource(R.string.pick_video_formats),
+                icon = Icons.Outlined.Videocam,
+                modifier = Modifier.weight(1f),
+                onClick = onPickVideo
+            )
+            PickerTile(
+                title = stringResource(R.string.pick_audio),
+                subtitle = stringResource(R.string.pick_audio_formats),
+                icon = Icons.Outlined.GraphicEq,
+                modifier = Modifier.weight(1f),
+                onClick = onPickAudio
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+        TextButton(
+            onClick = onPickAny,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
+        ) {
+            Icon(Icons.Outlined.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.browse_all), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
+private fun PickerTile(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(Surface1)
+            .border(1.dp, Hairline, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 22.dp, horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(Surface2),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = Amber, modifier = Modifier.size(24.dp))
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(title, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+        Spacer(Modifier.height(3.dp))
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+    }
+}
+
+
+
+

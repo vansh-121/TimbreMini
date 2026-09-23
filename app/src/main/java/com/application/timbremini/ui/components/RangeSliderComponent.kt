@@ -1,25 +1,26 @@
 package com.application.timbremini.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.application.timbremini.R
 import com.application.timbremini.data.formatTimeMs
 import com.application.timbremini.ui.theme.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RangeSliderComponent(
     totalDurationMs: Long,
@@ -34,202 +35,120 @@ fun RangeSliderComponent(
     val totalFloat = totalDurationMs.toFloat()
     val startFloat = startMs.coerceIn(0L, totalDurationMs).toFloat()
     val endFloat = endMs.coerceIn(startMs, totalDurationMs).toFloat()
-
     val trimDurationMs = (endMs - startMs).coerceAtLeast(0L)
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(16.dp),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Surface1)
+            .border(1.dp, Hairline, RoundedCornerShape(18.dp))
+            .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Header Row: Section title and Duration badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Text(
+                text = stringResource(R.string.trim_range),
+                style = MaterialTheme.typography.labelMedium,
+                color = TextSecondary
+            )
+            Surface(color = Surface2, shape = RoundedCornerShape(8.dp)) {
                 Text(
-                    text = "TRIM RANGE",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = TextSecondary,
-                        letterSpacing = 1.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    text = formatTimeMs(trimDurationMs, includeMillis = true),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = Amber
                 )
-
-                Surface(
-                    color = DarkSurfaceVariant,
-                    shape = RoundedCornerShape(8.dp),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
-                ) {
-                    Text(
-                        text = "Trimmed: ${formatTimeMs(trimDurationMs, includeMillis = true)}",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = NeonCyan,
-                            fontWeight = FontWeight.SemiBold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    )
-                }
             }
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
 
-            // Visual Range Slider
-            RangeSlider(
-                value = startFloat..endFloat,
-                onValueChange = { range ->
-                    val newStart = range.start.toLong().coerceAtLeast(0L)
-                    val newEnd = range.endInclusive.toLong().coerceAtMost(totalDurationMs)
-                    if (newEnd - newStart >= 500L) { // Min 500ms trim window
-                        onRangeChange(newStart, newEnd)
-                    }
-                },
-                valueRange = 0f..totalFloat,
-                modifier = Modifier.fillMaxWidth(),
-                colors = SliderDefaults.colors(
-                    thumbColor = NeonCyan,
-                    activeTrackColor = NeonCyan,
-                    inactiveTrackColor = TrackInactive,
-                    activeTickColor = Color.Transparent,
-                    inactiveTickColor = Color.Transparent
-                )
+        RangeSlider(
+            value = startFloat..endFloat,
+            onValueChange = { range ->
+                val newStart = range.start.toLong().coerceAtLeast(0L)
+                val newEnd = range.endInclusive.toLong().coerceAtMost(totalDurationMs)
+                if (newEnd - newStart >= 500L) onRangeChange(newStart, newEnd)
+            },
+            valueRange = 0f..totalFloat,
+            modifier = Modifier.fillMaxWidth(),
+            colors = SliderDefaults.colors(
+                thumbColor = Amber,
+                activeTrackColor = Amber,
+                inactiveTrackColor = TrackInactive,
+                activeTickColor = Color.Transparent,
+                inactiveTickColor = Color.Transparent
+            )
+        )
+
+        Spacer(Modifier.height(6.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            MarkerStepper(
+                label = stringResource(R.string.marker_start),
+                timeMs = startMs,
+                onMinus = { onRangeChange((startMs - 500L).coerceAtLeast(0L), endMs) },
+                onPlus = { onRangeChange((startMs + 500L).coerceAtMost(endMs - 500L), endMs) }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Timestamp Badges: Start & End Markers with Precision Steppers
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(bottom = 4.dp)
             ) {
-                // Start Marker Control
-                TimeMarkerChip(
-                    label = "START",
-                    timeMs = startMs,
-                    color = NeonCyan,
-                    onMinus = {
-                        val newStart = (startMs - 500L).coerceAtLeast(0L)
-                        onRangeChange(newStart, endMs)
-                    },
-                    onPlus = {
-                        val newStart = (startMs + 500L).coerceAtMost(endMs - 500L)
-                        onRangeChange(newStart, endMs)
-                    }
-                )
-
-                // Current Playhead Position Indicator
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Text(
-                        text = "PLAYHEAD",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = TextMuted,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                    Text(
-                        text = formatTimeMs(currentPositionMs, includeMillis = true),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = NeonAmber,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    )
-                }
-
-                // End Marker Control
-                TimeMarkerChip(
-                    label = "END",
-                    timeMs = endMs,
-                    color = NeonPurple,
-                    onMinus = {
-                        val newEnd = (endMs - 500L).coerceAtLeast(startMs + 500L)
-                        onRangeChange(startMs, newEnd)
-                    },
-                    onPlus = {
-                        val newEnd = (endMs + 500L).coerceAtMost(totalDurationMs)
-                        onRangeChange(startMs, newEnd)
-                    }
+                Text(stringResource(R.string.playhead), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = formatTimeMs(currentPositionMs, includeMillis = true),
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = TextSecondary
                 )
             }
+
+            MarkerStepper(
+                label = stringResource(R.string.marker_end),
+                timeMs = endMs,
+                onMinus = { onRangeChange(startMs, (endMs - 500L).coerceAtLeast(startMs + 500L)) },
+                onPlus = { onRangeChange(startMs, (endMs + 500L).coerceAtMost(totalDurationMs)) }
+            )
         }
     }
 }
 
 @Composable
-private fun TimeMarkerChip(
+private fun MarkerStepper(
     label: String,
     timeMs: Long,
-    color: Color,
     onMinus: () -> Unit,
     onPlus: () -> Unit
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                color = color,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Surface(
-            color = DarkSurfaceVariant,
-            shape = RoundedCornerShape(10.dp),
-            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = Amber)
+        Spacer(Modifier.height(6.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(Surface2)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                IconButton(
-                    onClick = onMinus,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Remove,
-                        contentDescription = "Decrease $label",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-
-                Text(
-                    text = formatTimeMs(timeMs, includeMillis = true),
-                    modifier = Modifier.padding(horizontal = 6.dp),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
-                    )
-                )
-
-                IconButton(
-                    onClick = onPlus,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Increase $label",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+            IconButton(onClick = onMinus, modifier = Modifier.size(30.dp)) {
+                Icon(Icons.Outlined.Remove, contentDescription = stringResource(R.string.nudge_back), tint = TextSecondary, modifier = Modifier.size(16.dp))
+            }
+            Text(
+                text = formatTimeMs(timeMs, includeMillis = true),
+                modifier = Modifier.padding(horizontal = 4.dp),
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                color = TextPrimary
+            )
+            IconButton(onClick = onPlus, modifier = Modifier.size(30.dp)) {
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.nudge_fwd), tint = TextSecondary, modifier = Modifier.size(16.dp))
             }
         }
     }

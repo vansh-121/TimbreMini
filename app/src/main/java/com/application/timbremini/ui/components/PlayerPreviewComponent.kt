@@ -4,25 +4,26 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
+import com.application.timbremini.R
 import com.application.timbremini.data.MediaItemData
 import com.application.timbremini.data.formatTimeMs
 import com.application.timbremini.ui.theme.*
@@ -40,185 +41,149 @@ fun PlayerPreviewComponent(
     onToggleLoopTrim: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(16.dp),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Surface1)
+            .border(1.dp, Hairline, RoundedCornerShape(18.dp))
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Media Display Area (Video View or Audio Visualizer)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(230.dp)
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center
-            ) {
-                if (mediaItem.isVideo && player != null) {
-                    // Video PlayerView
-                    AndroidView(
-                        factory = { ctx ->
-                            PlayerView(ctx).apply {
-                                useController = false
-                                layoutParams = FrameLayout.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
-                                this.player = player
-                            }
-                        },
-                        update = { view ->
-                            if (view.player != player) {
-                                view.player = player
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    // Audio Visualizer Card
-                    AudioVisualizerPlaceholder(
-                        isPlaying = isPlaying,
-                        mediaName = mediaItem.name
-                    )
-                }
-
-                // File type badge in top-left corner
-                Surface(
-                    color = Color.Black.copy(alpha = 0.65f),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (mediaItem.isVideo) Icons.Default.Videocam else Icons.Default.Audiotrack,
-                            contentDescription = null,
-                            tint = if (mediaItem.isVideo) NeonCyan else NeonPurple,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (mediaItem.isVideo) "VIDEO" else "AUDIO",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = TextPrimary,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
+        // Media stage
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            if (mediaItem.isVideo && player != null) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            useController = false
+                            layoutParams = FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
                             )
-                        )
-                    }
-                }
+                            this.player = player
+                        }
+                    },
+                    update = { view -> if (view.player != player) view.player = player },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                AudioVisualizer(isPlaying = isPlaying, mediaName = mediaItem.name)
             }
 
-            // Playback Control Bar
-            Column(
+            // Type badge
+            Surface(
+                color = Color.Black.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .align(Alignment.TopStart)
+                    .padding(12.dp)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    // Current playhead vs total duration
-                    Text(
-                        text = "${formatTimeMs(currentPositionMs)} / ${mediaItem.formattedDuration}",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
+                    Icon(
+                        imageVector = if (mediaItem.isVideo) Icons.Outlined.Videocam else Icons.Outlined.GraphicEq,
+                        contentDescription = null,
+                        tint = Amber,
+                        modifier = Modifier.size(15.dp)
                     )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text = if (mediaItem.isVideo) stringResource(R.string.badge_video) else stringResource(R.string.badge_audio),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextPrimary
+                    )
+                }
+            }
+        }
 
-                    // Loop Trim Range Toggle Chip
-                    FilterChip(
-                        selected = isLoopTrimActive,
-                        onClick = onToggleLoopTrim,
-                        label = {
-                            Text(
-                                text = "Loop Trim",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = if (isLoopTrimActive) FontWeight.Bold else FontWeight.Normal
-                                )
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Repeat,
-                                contentDescription = "Loop Trim Range",
-                                modifier = Modifier.size(16.dp)
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = NeonCyan.copy(alpha = 0.2f),
-                            selectedLabelColor = NeonCyan,
-                            selectedLeadingIconColor = NeonCyan
+        // Controls
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${formatTimeMs(currentPositionMs)} / ${mediaItem.formattedDuration}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = TextSecondary
+                )
+                FilterChip(
+                    selected = isLoopTrimActive,
+                    onClick = onToggleLoopTrim,
+                    label = {
+                        Text(stringResource(R.string.loop_range), style = MaterialTheme.typography.labelLarge)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Outlined.Repeat,
+                            contentDescription = stringResource(R.string.loop_range_cd),
+                            modifier = Modifier.size(16.dp)
                         )
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = Surface2,
+                        labelColor = TextSecondary,
+                        iconColor = TextSecondary,
+                        selectedContainerColor = Amber.copy(alpha = 0.14f),
+                        selectedLabelColor = Amber,
+                        selectedLeadingIconColor = Amber
+                    )
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilledTonalIconButton(
+                    onClick = onSeekToStart,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = Surface2, contentColor = TextPrimary
+                    ),
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(Icons.Outlined.SkipPrevious, contentDescription = stringResource(R.string.seek_start_cd))
+                }
+
+                Spacer(Modifier.width(22.dp))
+
+                FilledIconButton(
+                    onClick = onPlayPauseToggle,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = Amber, contentColor = Ink
+                    ),
+                    modifier = Modifier.size(58.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (isPlaying) stringResource(R.string.pause_cd) else stringResource(R.string.play_cd),
+                        modifier = Modifier.size(30.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.width(22.dp))
 
-                // Media Action Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                FilledTonalIconButton(
+                    onClick = onSeekToEnd,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = Surface2, contentColor = TextPrimary
+                    ),
+                    modifier = Modifier.size(44.dp)
                 ) {
-                    // Jump to Start Marker
-                    FilledTonalIconButton(
-                        onClick = onSeekToStart,
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = DarkSurfaceVariant,
-                            contentColor = TextPrimary
-                        ),
-                        modifier = Modifier.size(44.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = "Jump to Trim Start"
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(20.dp))
-
-                    // Play/Pause Main Button
-                    FilledIconButton(
-                        onClick = onPlayPauseToggle,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = NeonCyan,
-                            contentColor = DarkBackground
-                        ),
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(20.dp))
-
-                    // Jump to End Marker
-                    FilledTonalIconButton(
-                        onClick = onSeekToEnd,
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = DarkSurfaceVariant,
-                            contentColor = TextPrimary
-                        ),
-                        modifier = Modifier.size(44.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Jump to Trim End"
-                        )
-                    }
+                    Icon(Icons.Outlined.SkipNext, contentDescription = stringResource(R.string.seek_end_cd))
                 }
             }
         }
@@ -226,64 +191,52 @@ fun PlayerPreviewComponent(
 }
 
 @Composable
-private fun AudioVisualizerPlaceholder(
-    isPlaying: Boolean,
-    mediaName: String
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "audio_bars")
-    val barCount = 18
-
-    val heights = (0 until barCount).map { index ->
-        if (isPlaying) {
-            val duration = 400 + (index * 60) % 500
-            infiniteTransition.animateFloat(
-                initialValue = 12f,
-                targetValue = 65f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(duration, easing = FastOutSlowInEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "bar_$index"
-            ).value
-        } else {
-            12f
-        }
-    }
+private fun AudioVisualizer(isPlaying: Boolean, mediaName: String) {
+    val transition = rememberInfiniteTransition(label = "bars")
+    val barCount = 24
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier.fillMaxSize()
     ) {
-        // Animated sound wave bars
         Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.height(70.dp)
+            modifier = Modifier.height(64.dp)
         ) {
-            heights.forEachIndexed { i, height ->
+            (0 until barCount).forEach { index ->
+                val height = if (isPlaying) {
+                    val duration = 360 + (index * 47) % 460
+                    transition.animateFloat(
+                        initialValue = 8f,
+                        targetValue = 58f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(duration, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "bar_$index"
+                    ).value
+                } else {
+                    // A calm, static waveform-like silhouette when paused.
+                    10f + (index % 5) * 6f
+                }
+                // Fade the accent toward the edges so the cluster reads as one shape.
+                val edge = 1f - (kotlin.math.abs(index - barCount / 2f) / (barCount / 2f)) * 0.5f
                 Box(
                     modifier = Modifier
-                        .width(4.dp)
+                        .width(3.dp)
                         .height(height.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(NeonCyan, NeonPurple)
-                            )
-                        )
+                        .background(Amber.copy(alpha = 0.35f + 0.45f * edge))
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
+        Spacer(Modifier.height(14.dp))
         Text(
             text = mediaName,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = TextSecondary,
-                fontWeight = FontWeight.Medium
-            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary,
             maxLines = 1,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
