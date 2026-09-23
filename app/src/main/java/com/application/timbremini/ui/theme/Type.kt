@@ -9,15 +9,15 @@ import androidx.compose.ui.unit.sp
 import com.application.timbremini.R
 
 /**
- * iOS-inspired typography scale powered by Inter (Apple SF Pro equivalent).
- * Features clean neutral geometry, tall x-height, tight display tracking,
+ * Authentic Apple San Francisco (SF Pro) typography scale.
+ * Features Apple's native grotesque geometry, tall x-height, tight tracking on headings,
  * and high legibility across dark and light studio themes.
  */
 val IosFontFamily = FontFamily(
-    Font(R.font.inter, FontWeight.Normal),
-    Font(R.font.inter, FontWeight.Medium),
-    Font(R.font.inter, FontWeight.SemiBold),
-    Font(R.font.inter, FontWeight.Bold)
+    Font(R.font.sf_pro_regular, FontWeight.Normal),
+    Font(R.font.sf_pro_medium, FontWeight.Medium),
+    Font(R.font.sf_pro_semibold, FontWeight.SemiBold),
+    Font(R.font.sf_pro_bold, FontWeight.Bold)
 )
 
 val AppTypography = Typography(

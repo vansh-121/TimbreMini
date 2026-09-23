@@ -19,6 +19,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -287,16 +289,16 @@ private fun AppTopBar(
 private fun BrandMark() {
     Box(
         modifier = Modifier
-            .size(38.dp)
-            .clip(RoundedCornerShape(11.dp))
-            .background(Amber),
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(Amber.copy(alpha = 0.15f)),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Outlined.ContentCut,
             contentDescription = null,
-            tint = OnAccent,
-            modifier = Modifier.size(20.dp)
+            tint = Amber,
+            modifier = Modifier.size(18.dp)
         )
     }
 }
@@ -427,39 +429,43 @@ private fun EmptyState(
         Box(
             modifier = Modifier
                 .size(68.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(Surface1)
-                .border(1.dp, Hairline, RoundedCornerShape(20.dp)),
+                .clip(CircleShape)
+                .background(Amber.copy(alpha = 0.14f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Outlined.ContentCut,
                 contentDescription = null,
                 tint = Amber,
-                modifier = Modifier.size(30.dp)
+                modifier = Modifier.size(32.dp)
             )
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(22.dp))
         Text(
             text = stringResource(R.string.empty_title),
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.8).sp
+            ),
             color = TextPrimary,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.empty_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                letterSpacing = (-0.2).sp
+            ),
             color = TextSecondary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 12.dp)
         )
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(30.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             PickerTile(
                 title = stringResource(R.string.pick_video),
@@ -477,15 +483,37 @@ private fun EmptyState(
             )
         }
 
-        Spacer(Modifier.height(12.dp))
-        TextButton(
+        Spacer(Modifier.height(14.dp))
+        Surface(
             onClick = onPickAny,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
+            shape = RoundedCornerShape(16.dp),
+            color = Surface1,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Hairline),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
         ) {
-            Icon(Icons.Outlined.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.browse_all), style = MaterialTheme.typography.labelLarge)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(
+                    Icons.Outlined.FolderOpen,
+                    contentDescription = null,
+                    tint = Amber,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.browse_all),
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.2).sp
+                    ),
+                    color = TextPrimary
+                )
+            }
         }
     }
 }
@@ -500,28 +528,39 @@ private fun PickerTile(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(Surface1)
-            .border(1.dp, Hairline, RoundedCornerShape(18.dp))
+            .border(1.dp, Hairline, RoundedCornerShape(22.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 20.dp, horizontal = 12.dp),
+            .padding(vertical = 22.dp, horizontal = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(13.dp))
-                .background(Surface2),
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Amber.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription = null, tint = Amber, modifier = Modifier.size(24.dp))
         }
-        Spacer(Modifier.height(12.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.3).sp
+            ),
+            color = TextPrimary
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 16.sp),
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontSize = 11.5.sp,
+                lineHeight = 16.sp,
+                letterSpacing = 0.sp
+            ),
             color = TextMuted,
             textAlign = TextAlign.Center
         )
