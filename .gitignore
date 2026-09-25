@@ -7,6 +7,7 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+.claude/
 .DS_Store
 /build
 /captures
@@ -24,3 +25,4 @@ keystore.properties
 !app-release.apk
 /app/release/
 *.mp4
+

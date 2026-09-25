@@ -88,7 +88,7 @@ adb install -r app-release.apk
 
 ## 🏛️ System Architecture
 
-TimbreMini strictly adheres to **Clean Architecture** and **MVVM with Unidirectional Data Flow (UDF)**:
+The project follows **Clean Architecture** and **MVVM with Unidirectional Data Flow (UDF)**:
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -217,9 +217,9 @@ Unit test coverage is situated in [`app/src/test/`](file:///e:/TimbreMini/app/sr
 
 ---
 
-## 🛡️ Robustness & Edge-Case Handling
+## 🛡️ Edge-Case & Error Handling
 
-TimbreMini is engineered for rock-solid stability across real-world edge cases:
+How unexpected files, system interruptions, and device edge cases are handled:
 
 | Edge-Case Scenario | App Behavior & Safeguards |
 | :--- | :--- |
@@ -231,9 +231,9 @@ TimbreMini is engineered for rock-solid stability across real-world edge cases:
 
 ---
 
-## ⚡ Performance & Trimming Benchmark
+## ⚡ Performance & Trimming Strategy
 
-TimbreMini employs a **dual-pass export engine** to achieve maximum speed while maintaining 100% output reliability:
+The export pipeline uses a **two-phase strategy** to balance fast export times with format compatibility:
 
 | Strategy | Speed (100 MB File) | CPU & Battery Usage | Output Quality |
 | :--- | :---: | :---: | :---: |

@@ -53,7 +53,6 @@ fun TrimResultDialog(
             resultPlayer = null
         }
     }
-    // BODY_MARKER
 
     Dialog(
         onDismissRequest = onDismiss,

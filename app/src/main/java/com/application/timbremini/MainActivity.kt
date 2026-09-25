@@ -216,7 +216,6 @@ fun TimbreMiniApp(
         }
     }
 }
-// APPEND_MARKER
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -298,7 +297,6 @@ private fun BrandMark() {
             .border(0.5.dp, Hairline, RoundedCornerShape(10.dp))
     )
 }
-// APPEND2
 
 @Composable
 private fun EditorScreen(
@@ -407,7 +405,6 @@ private fun DetailItem(label: String, value: String) {
         Text(value, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
     }
 }
-// APPEND3
 
 @Composable
 private fun EmptyState(
