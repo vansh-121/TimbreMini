@@ -117,6 +117,47 @@ TimbreMini strictly adheres to **Clean Architecture** and **MVVM with Unidirecti
 
 ---
 
+## 📂 Project Structure
+
+```
+TimbreMini/
+├── app-release.apk                  # Signed production release APK deliverable
+├── demo.gif                         # Animated UI walkthrough
+├── keystore.properties.example      # Template for release signing configuration
+├── app/
+│   ├── build.gradle.kts             # App dependencies, signingConfigs & SDK targets
+│   ├── proguard-rules.pro           # ProGuard / R8 rules
+│   └── src/
+│       ├── main/
+│       │   ├── AndroidManifest.xml  # Permissions (Scoped Storage) & Activity setup
+│       │   ├── java/com/application/timbremini/
+│       │   │   ├── MainActivity.kt                  # Single-activity Compose UI host
+│       │   │   ├── data/
+│       │   │   │   ├── MediaModel.kt                # Media metadata, state models & time formatter
+│       │   │   │   └── MediaStorageManager.kt       # SAF URI caching & MediaStore exporter
+│       │   │   ├── domain/
+│       │   │   │   └── FFmpegTrimmer.kt             # FFmpegKit session runner & progress calculation
+│       │   │   └── ui/
+│       │   │       ├── TrimViewModel.kt             # MVVM state holder, ExoPlayer & trim controller
+│       │   │       ├── components/
+│       │   │       │   ├── PlayerPreviewComponent.kt   # Video SurfaceView & Audio wave preview
+│       │   │       │   ├── RangeSliderComponent.kt     # Precision slider & ±0.5s nudge steppers
+│       │   │       │   ├── ProcessingProgressDialog.kt # Live FFmpeg transcode progress dialog
+│       │   │       │   ├── TrimResultDialog.kt         # Success dialog with share & open intents
+│       │   │       │   └── UnsupportedFormatDialog.kt  # Unsupported file alert dialog
+│       │   │       └── theme/
+│       │   │           ├── Color.kt                 # Material 3 light & dark color palettes
+│       │   │           ├── Theme.kt                 # Theme provider & window insets handling
+│       │   │           └── Type.kt                  # Custom typography definitions
+│       │   └── res/                                 # Drawables, mipmaps, fonts & localized strings
+│       └── test/
+│           └── java/com/application/timbremini/
+│               └── TrimLogicUnitTest.kt             # Unit tests for trim math & formatting logic
+└── gradle/                                          # Gradle wrapper and version catalogs
+```
+
+---
+
 ## 🛠️ Tech Stack & Dependencies
 
 | Layer | Technology | Purpose |
