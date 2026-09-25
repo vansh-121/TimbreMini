@@ -84,12 +84,12 @@ adb install -r app-release.apk
 
 ## 🏛️ System Architecture
 
-TimbreMini strictly adheres to **Clean Architecture** and **Unidirectional Data Flow (MVI / MVVM)**:
+TimbreMini strictly adheres to **Clean Architecture** and **MVVM with Unidirectional Data Flow (UDF)**:
 
 ```
 ┌────────────────────────────────────────────────────────┐
 │             MainActivity (Jetpack Compose)             │
-│        Observes UiState • Dispatches User Intents      │
+│        Observes StateFlow • Dispatches User Events     │
 └───────────────────────────┬────────────────────────────┘
                             │
                             ▼
