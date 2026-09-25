@@ -17,6 +17,16 @@ a clean cut straight to your device's Music/Movies library.
 - Saves via **MediaStore / Scoped Storage** to `Music/TimbreMini` or `Movies/TimbreMini`.
 - Share or open the result directly from the success screen.
 
+## Screenshots
+
+| Home (Dark Mode) | Light Mode | Video Trimming |
+| :---: | :---: | :---: |
+| <img src="screenshots/home_dark.jpeg" width="240" alt="Home Dark Mode" /> | <img src="screenshots/home_light.jpeg" width="240" alt="Home Light Mode" /> | <img src="screenshots/video_trim.jpeg" width="240" alt="Video Trimming Screen" /> |
+
+| Video Saved Result | Audio Trimming | Audio Saved Result |
+| :---: | :---: | :---: |
+| <img src="screenshots/video_result.jpeg" width="240" alt="Video Saved Result" /> | <img src="screenshots/audio_trim.jpeg" width="240" alt="Audio Trimming Screen" /> | <img src="screenshots/audio_result.jpeg" width="240" alt="Audio Saved Result" /> |
+
 ## Tech
 
 - **Kotlin + Jetpack Compose** (Material 3), single-activity.
