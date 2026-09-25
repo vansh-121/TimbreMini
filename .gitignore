@@ -13,3 +13,13 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Keystore and signing credentials
+*.jks
+*.keystore
+keystore.properties
+
+# # Build artifacts & media
+*.apk
+/app/release/
+*.mp4

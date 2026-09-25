@@ -4,6 +4,10 @@ A small, focused Android app for trimming audio and video files. Pick a file, se
 in/out point on a range slider, preview the selection with looping playback, and export
 a clean cut straight to your device's Music/Movies library.
 
+<p align="center">
+  <img src="demo.gif" width="300" alt="TimbreMini Demo" />
+</p>
+
 ## Features
 
 - Trim **audio and video** — MP3, M4A, WAV, MP4, MKV, WebM, and more.
