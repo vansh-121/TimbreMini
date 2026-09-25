@@ -1,4 +1,8 @@
-# 🎬 TimbreMini
+<p align="center">
+  <img src="screenshots/logo.png" width="96" height="96" alt="TimbreMini Logo" />
+</p>
+
+<h1 align="center">TimbreMini</h1>
 
 <p align="center">
   <strong>A focused, high-performance Android utility for precision audio and video trimming.</strong>
