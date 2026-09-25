@@ -19,7 +19,8 @@ local.properties
 *.keystore
 keystore.properties
 
-# # Build artifacts & media
+# Build artifacts & media
 *.apk
+!app-release.apk
 /app/release/
 *.mp4
